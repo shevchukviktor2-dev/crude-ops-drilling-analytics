@@ -1,0 +1,52 @@
+resources:
+  jobs:
+    Workflow_DAG:
+      name: Workflow (DAG)
+      tasks:
+        - task_key: Ingestion
+          notebook_task:
+            notebook_path: crude_ops_project/02_Ingestion/001_Ingestion_Pipeline
+            source: GIT
+          existing_cluster_id: 0611-083751-r843iokc
+        - task_key: Bronze_to_Silver
+          depends_on:
+            - task_key: Ingestion
+          notebook_task:
+            notebook_path: crude_ops_project/02_Ingestion/01_load_las_to_bronze
+            source: GIT
+          existing_cluster_id: 0611-083751-r843iokc
+        - task_key: Bronze_to_Silver_sap
+          depends_on:
+            - task_key: Ingestion
+          notebook_task:
+            notebook_path: crude_ops_project/02_Ingestion/02_load_sap_to_bronze
+            source: GIT
+          existing_cluster_id: 0611-083751-r843iokc
+        - task_key: Silver
+          depends_on:
+            - task_key: Bronze_to_Silver
+            - task_key: Bronze_to_Silver_sap
+          notebook_task:
+            notebook_path: crude_ops_project/03_Transformation/01_silver_drilling_sensor_data
+            source: GIT
+          existing_cluster_id: 0611-083751-r843iokc
+        - task_key: Gold_Aggregates
+          depends_on:
+            - task_key: Silver
+          notebook_task:
+            notebook_path: crude_ops_project/04_gold/01_drilling_summary
+            source: GIT
+          existing_cluster_id: 0611-083751-r843iokc
+        - task_key: Data_Quality_Check
+          depends_on:
+            - task_key: Gold_Aggregates
+          notebook_task:
+            notebook_path: crude_ops_project/05_test/quality_checks.py
+            source: GIT
+          existing_cluster_id: 0611-083751-r843iokc
+      git_source:
+        git_url: https://github.com/shevchukviktor2-dev/crude-ops-drilling-analytics
+        git_provider: gitHub
+        git_branch: main
+      queue:
+        enabled: true
