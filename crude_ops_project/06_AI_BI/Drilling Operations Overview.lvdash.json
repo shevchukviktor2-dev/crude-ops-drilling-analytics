@@ -1,0 +1,661 @@
+{
+  "datasets": [
+    {
+      "name": "drilling_metrics",
+      "displayName": "Drilling Metrics",
+      "config": {
+        "source": "crude_ops.gold.drilling_stats_summary",
+        "measures": [
+          {
+            "name": "avg_depth",
+            "expr": "AVG(avg_depth)",
+            "comment": "Mean depth across the time period",
+            "displayName": "Average Depth"
+          },
+          {
+            "name": "avg_gamma_ray",
+            "expr": "AVG(avg_gamma_ray)",
+            "comment": "Mean gamma ray across the time period",
+            "displayName": "Average Gamma Ray"
+          },
+          {
+            "name": "total_data_points",
+            "expr": "SUM(data_points_count)",
+            "comment": "Total number of sensor readings",
+            "displayName": "Total Data Points"
+          },
+          {
+            "name": "operation_count",
+            "expr": "COUNT(*)",
+            "comment": "Count of time intervals per operation",
+            "displayName": "Operation Count"
+          }
+        ],
+        "version": "1.1",
+        "comment": "Drilling operations metrics for depth and operation analysis",
+        "dimensions": [
+          {
+            "name": "start",
+            "expr": "start",
+            "comment": "Start time of the interval",
+            "displayName": "Timestamp"
+          },
+          {
+            "name": "operation",
+            "expr": "operation",
+            "comment": "Drilling operation category",
+            "displayName": "Operation"
+          },
+          {
+            "name": "phase",
+            "expr": "phase",
+            "comment": "Drilling phase",
+            "displayName": "Phase"
+          },
+          {
+            "name": "productive_status",
+            "expr": "CASE WHEN operation = 'Drilling' THEN 'Drilling' ELSE 'Non-productive Time' END",
+            "comment": "Groups drilling against all non-drilling activity for high-level time comparison",
+            "displayName": "Productive Status"
+          }
+        ]
+      }
+    },
+    {
+      "name": "6cec3066",
+      "displayName": "Drilling_Raw_Data",
+      "queryLines": [
+        "SELECT * FROM crude_ops.gold.drilling_stats_summary"
+      ]
+    },
+    {
+      "name": "375cfbf6",
+      "displayName": "Drilling_Heat_Map",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT \n  -- group gamma 5 items\n  floor(avg_gamma_ray / 5) * 5 as gamma_group,\n  -- group depth 10 meters\n  floor(avg_depth / 10) * 10 as depth_group,\n  count(*) as density,\n  phase\nFROM crude_ops.gold.drilling_stats_summary\nGROUP BY 1, 2, 4",
+        "dimensions": [
+          {
+            "name": "gamma_group",
+            "expr": "source.gamma_group",
+            "displayName": "Gamma Group"
+          },
+          {
+            "name": "depth_group",
+            "expr": "source.depth_group",
+            "displayName": "Depth Group"
+          },
+          {
+            "name": "density",
+            "expr": "source.density",
+            "displayName": "Density"
+          },
+          {
+            "name": "phase",
+            "expr": "source.phase",
+            "displayName": "Phase"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    }
+  ],
+  "pages": [
+    {
+      "name": "9a18dda7",
+      "displayName": "The Drilling",
+      "layout": [
+        {
+          "widget": {
+            "name": "depth_over_time_line",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "drilling_metrics",
+                  "fields": [
+                    {
+                      "name": "start",
+                      "expression": "`start`"
+                    },
+                    {
+                      "name": "measure(avg_depth)",
+                      "expression": "MEASURE(`avg_depth`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Drilling Depth Trend",
+                "showTitle": true
+              },
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "start",
+                  "displayName": "Timestamp",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(avg_depth)",
+                  "displayName": "Average Depth",
+                  "scale": {
+                    "type": "quantitative",
+                    "reverse": true
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 8,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "operations_distribution_pie",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "drilling_metrics",
+                  "fields": [
+                    {
+                      "name": "measure(operation_count)",
+                      "expression": "MEASURE(`operation_count`)"
+                    },
+                    {
+                      "name": "operation",
+                      "expression": "`operation`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Operations Distribution",
+                "showTitle": true
+              },
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "measure(operation_count)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Count"
+                },
+                "color": {
+                  "fieldName": "operation",
+                  "displayName": "Operation",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 4,
+            "width": 4,
+            "height": 10
+          }
+        },
+        {
+          "widget": {
+            "name": "phase",
+            "queries": [
+              {
+                "name": "dashboards/01f14cb9707514b59ff2080399c53d05/datasets/01f14cbadd961d04ab8c562eda1c48c6_phase",
+                "query": {
+                  "datasetName": "drilling_metrics",
+                  "fields": [
+                    {
+                      "name": "phase",
+                      "expression": "`phase`"
+                    },
+                    {
+                      "name": "phase_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f14cb9707514b59ff2080399c53d05/datasets/01f14cc49f581550bcaa8f0485731087_phase",
+                "query": {
+                  "datasetName": "6cec3066",
+                  "fields": [
+                    {
+                      "name": "phase",
+                      "expression": "`phase`"
+                    },
+                    {
+                      "name": "phase_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "disallowAll": false,
+              "selection": {
+                "defaultSelection": {
+                  "operator": {
+                    "operator": "AND",
+                    "args": []
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filter Phase",
+                "showDescription": false
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "phase",
+                    "queryName": "dashboards/01f14cb9707514b59ff2080399c53d05/datasets/01f14cbadd961d04ab8c562eda1c48c6_phase"
+                  },
+                  {
+                    "fieldName": "phase",
+                    "queryName": "dashboards/01f14cb9707514b59ff2080399c53d05/datasets/01f14cc49f581550bcaa8f0485731087_phase"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "gamma_ray_over_time_line",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "drilling_metrics",
+                  "fields": [
+                    {
+                      "name": "start",
+                      "expression": "`start`"
+                    },
+                    {
+                      "name": "measure(avg_gamma_ray)",
+                      "expression": "MEASURE(`avg_gamma_ray`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Gamma Ray Profile",
+                "showTitle": true
+              },
+              "mark": {
+                "colors": [
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
+              },
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "start",
+                  "displayName": "Timestamp",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(avg_gamma_ray)",
+                  "displayName": "Average Gamma Ray",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 8,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "gamma_vs_depth_scatter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "6cec3066",
+                  "fields": [
+                    {
+                      "name": "phase",
+                      "expression": "`phase`"
+                    },
+                    {
+                      "name": "avg_gamma_ray",
+                      "expression": "`avg_gamma_ray`"
+                    },
+                    {
+                      "name": "avg_depth",
+                      "expression": "`avg_depth`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "showTitle": true,
+                "title": "Lithological Characterization Profile"
+              },
+              "mark": {
+                "opacity": 0.7,
+                "size": -2
+              },
+              "widgetType": "scatter",
+              "encodings": {
+                "x": {
+                  "fieldName": "avg_gamma_ray",
+                  "displayName": "Average Gamma Ray",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg_depth",
+                  "displayName": "Average Depth",
+                  "scale": {
+                    "type": "quantitative",
+                    "reverse": true
+                  }
+                },
+                "color": {
+                  "fieldName": "phase",
+                  "displayName": "Phase",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "custom-order",
+                      "orderedValues": [
+                        "Phase 1: Surface",
+                        "Phase 2: Intermediate",
+                        "Phase 3: Deep Section",
+                        "Phase 4: Evaluation"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 12,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "operational-time-breakdown-npt-vs-drilling",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "375cfbf6",
+                  "fields": [
+                    {
+                      "name": "count(*)",
+                      "expression": "COUNT(`*`)"
+                    },
+                    {
+                      "name": "gamma_group",
+                      "expression": "`gamma_group`"
+                    },
+                    {
+                      "name": "depth_group",
+                      "expression": "`depth_group`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "showTitle": true,
+                "title": "Operational Time Breakdown (NPT vs Drilling)"
+              },
+              "widgetType": "heatmap",
+              "encodings": {
+                "x": {
+                  "fieldName": "gamma_group",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "depth_group",
+                  "axis": {
+                    "title": "depth"
+                  },
+                  "scale": {
+                    "type": "quantitative",
+                    "reverse": true
+                  }
+                },
+                "color": {
+                  "fieldName": "count(*)",
+                  "scale": {
+                    "type": "quantitative",
+                    "reverse": true,
+                    "domain": {
+                      "max": 5,
+                      "min": 1
+                    },
+                    "colorRamp": {
+                      "mode": "scheme",
+                      "scheme": "blues"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 23,
+            "width": 12,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "max-depth",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "6cec3066",
+                  "fields": [
+                    {
+                      "name": "max(avg_depth)",
+                      "expression": "MAX(`avg_depth`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Max Depth:",
+                "showDescription": false
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "max(avg_depth)"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 6,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "3718d354",
+            "multilineTextboxSpec": {
+              "lines": [
+                "<span style=\"text-align:justify;display:block\"><span style=\"font-size: 36px;line-height: 1.5;\">Executive Summary: </span></span>\n",
+                "\n",
+                "<span style=\"text-align:justify;display:block\"><span style=\"font-size: 24px;\">Drilling efficiency is optimal in Phase 2. High Gamma Ray clusters in Phase 3 indicate a transition to shale formations, requiring adjusted drilling parameters.</span></span>"
+              ]
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 14,
+            "width": 4,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "total-records-analyzed",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "6cec3066",
+                  "fields": [
+                    {
+                      "name": "count(*)",
+                      "expression": "COUNT(`*`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Total Records Analyzed"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(*)"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 1,
+            "width": 6,
+            "height": 3
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
